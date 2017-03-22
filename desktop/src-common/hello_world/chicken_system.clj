@@ -1,13 +1,8 @@
-(ns hello-world.chicken-system)
+(ns hello-world.chicken-system
+  (:gen-class))
 
 
-(def dimension 3)
-
-(def dead-grid (make-grid dimension))
-(def alive-grid (make-grid dimension))
-
-(defstruct ant :x :y)
-(def ants (create-ants 1))
+(def dimension 50)
 
 (defn get-tile
   [grid [y x]]
@@ -20,6 +15,11 @@
                 (apply vector (map (fn [_] (ref false)) 
                                    (range dimension)))) 
               (range dimension))))
+
+(def dead-grid (make-grid dimension))
+(def alive-grid (make-grid dimension))
+
+(defstruct ant :x :y)
 
 (defn create-ant
   [[i j]] 
@@ -41,6 +41,9 @@
                   (recur num-ants-left new-ants)
                   (recur (dec num-ants-left) (conj new-ants (create-ant [i j])))))))))
 
+(def num-ants 10)
+(def ants (create-ants num-ants))
+
 (defn create-bodies
   [num-bodies]
   "I do nothing :D")
@@ -55,9 +58,12 @@
          new-y (+ y dy)]
      (ref-set (get-tile alive-grid [y x] false))
      (ref-set (get-tile alive-grid [new-y new-x] true))
-     (ref-set ant (struct new-x new-y))
-     )
-   ))
+     (ref-set ant (struct new-x new-y)))))
+
+(defn loop-ants
+  ""
+  []
+  )
 
 
 (defn dec-tile [x]
