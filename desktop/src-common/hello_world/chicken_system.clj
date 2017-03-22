@@ -19,12 +19,12 @@
 (def dead-grid (make-grid dimension))
 (def alive-grid (make-grid dimension))
 
-(defstruct ant :x :y)
+(defstruct ant-struct :x :y)
 
 (defn create-ant
   [[i j]] 
   (ref-set (get-tile alive-grid [i j]) true)
-  (ref (struct ant j i)))
+  (ref (struct ant-struct j i)))
 
 (defn create-ants
   ""
@@ -48,35 +48,32 @@
   [num-bodies]
   "I do nothing :D")
 
+(defn wrap
+  ""
+  [x]
+  (cond
+    (>= x dimension) 0
+    (<  x dimension) (dec dimension)
+    :else x))
+
+
 (defn move-ant
   ""
   [ant [dx dy]]
   (dosync
-   (let [x (:x ant)
-         y (:y ant)
-         new-x (+ x dx)
-         new-y (+ y dy)]
-     (ref-set (get-tile alive-grid [y x] false))
-     (ref-set (get-tile alive-grid [new-y new-x] true))
-     (ref-set ant (struct new-x new-y)))))
+   (let [x (:x (deref ant))
+         y (:y (deref ant))
+         new-x (wrap (+ x dx))
+         new-y (wrap (+ y dy))]
+     (ref-set (get-tile alive-grid [y x]) false)
+     (ref-set (get-tile alive-grid [new-y new-x]) true)
+     (ref-set ant (struct ant-struct new-x new-y)))))
 
 (defn loop-ants
   ""
   []
-  )
+  (move-ant (first ants) [1 0]))
 
-
-(defn dec-tile [x]
-  (let [new-x (dec x)]
-    (if (< new-x 0)
-      (- dimension 1)
-      new-x)))
-
-(defn inc-tile [x]
-  (let [new-x (inc x)]
-    (if (>= new-x dimension)
-      0
-      new-x)))
 
 (defn random-direction [] (rand-nth [:down :up :left :right]))
 

@@ -36,6 +36,25 @@
                (first left-ants)
                (rest left-ants))))))
 
+(defn update-chicken-entities-positions
+  ""
+  [entities]
+  (loop [entity        (first entities)
+         left-entities (rest entities)
+         ant-ref   (first cs/ants)
+         left-ants (rest cs/ants)]
+    (if (nil? ant-ref)
+      entities
+      (let [ant (deref ant-ref)]
+        (update entity :x (fn [trash] :x ant))
+        (update entity :y (fn [trash] :y ant))
+        (recur (first left-entities) (rest left-entities)
+               (first left-ants) (rest left-ants))))
+
+    )
+  )
+
+
 ;; (defn update-alive-chickens 
 ;;   [entities]
 ;;   (map (fn [entity]
@@ -51,14 +70,13 @@
     (->> entities
          (create-chicken-entities cs/ants)))
   
-  
   :on-render
   (fn [screen entities]
     (clear!)
     (Thread/sleep 50)
     (cs/loop-ants)
     (->> entities
-         ;; (update-alive-chickens)
+         (update-chicken-entities-positions)
          (render! screen)))
 
   :on-key-down
