@@ -1,6 +1,14 @@
 (ns hello-world.chicken-system
   (:gen-class))
 
+(def direction-id-map-delta
+  {:up    [ 0  1]
+   :right [ 1  0]
+   :down  [ 0 -1]
+   :left  [-1  0]})
+
+(defn random-direction []
+  ((rand-nth [:up :right :down :left]) direction-id-map-delta))
 
 (def dimension 50)
 
@@ -41,7 +49,7 @@
                   (recur num-ants-left new-ants)
                   (recur (dec num-ants-left) (conj new-ants (create-ant [i j])))))))))
 
-(def num-ants 10)
+(def num-ants 30)
 (def ants (create-ants num-ants))
 
 (defn create-bodies
@@ -53,9 +61,8 @@
   [x]
   (cond
     (>= x dimension) 0
-    (<  x dimension) (dec dimension)
+    (<  x 0) (dec dimension)
     :else x))
-
 
 (defn move-ant
   ""
@@ -64,7 +71,7 @@
    (let [x (:x (deref ant))
          y (:y (deref ant))
          new-x (wrap (+ x dx))
-         new-y (wrap (+ y dy))]
+         new-y (wrap (+ y dy))] 
      (ref-set (get-tile alive-grid [y x]) false)
      (ref-set (get-tile alive-grid [new-y new-x]) true)
      (ref-set ant (struct ant-struct new-x new-y)))))
@@ -72,9 +79,15 @@
 (defn loop-ants
   ""
   []
-  (move-ant (first ants) [1 0]))
+  (move-ant (first ants) [1 0])
+  ;; (loop [ant (first ants)
+  ;;        left-ants (rest ants)]
+  ;;   (if (nil? ant)
+  ;;     nil
+  ;;     (do
+  ;;       (move-ant ant (random-direction))
+  ;;       (recur (first left-ants) (rest left-ants)))))
+  )
 
-
-(defn random-direction [] (rand-nth [:down :up :left :right]))
 
 

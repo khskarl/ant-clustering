@@ -42,17 +42,17 @@
   (loop [entity        (first entities)
          left-entities (rest entities)
          ant-ref   (first cs/ants)
-         left-ants (rest cs/ants)]
+         left-ants (rest cs/ants)
+         out-entities []]
     (if (nil? ant-ref)
-      entities
+      out-entities
       (let [ant (deref ant-ref)]
-        (update entity :x (fn [trash] :x ant))
-        (update entity :y (fn [trash] :y ant))
+        ;; (update entity :x (fn [trash] :x ant))
+        ;; (update entity :y (fn [trash] :y ant))
         (recur (first left-entities) (rest left-entities)
-               (first left-ants) (rest left-ants))))
-
-    )
-  )
+               (first left-ants)     (rest left-ants)
+               (conj out-entities (assoc (assoc entity :y (* tile-size (:y ant)))
+                                         :x (* tile-size (:x ant)))))))))
 
 
 ;; (defn update-alive-chickens 
