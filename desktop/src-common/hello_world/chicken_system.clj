@@ -13,8 +13,12 @@
 (def dimension 50)
 
 (defn get-tile
-  [grid [y x]]
-  (get-in grid [y x]))
+  [grid [i j]]
+  (get-in grid [i j]))
+
+(defn is-tile-free
+  [grid [i j]]
+  (= false (deref (get-tile grid [i j]))))
 
 (defn make-grid
   [dimension]
@@ -24,7 +28,7 @@
                                    (range dimension)))) 
               (range dimension))))
 
-(def dead-grid (make-grid dimension))
+(def dead-grid  (make-grid dimension))
 (def alive-grid (make-grid dimension))
 
 (defstruct ant-struct :x :y)
@@ -71,22 +75,25 @@
    (let [x (:x (deref ant))
          y (:y (deref ant))
          new-x (wrap (+ x dx))
-         new-y (wrap (+ y dy))] 
-     (ref-set (get-tile alive-grid [y x]) false)
-     (ref-set (get-tile alive-grid [new-y new-x]) true)
-     (ref-set ant (struct ant-struct new-x new-y)))))
+         new-y (wrap (+ y dy))]
+     (if (is-tile-free alive-grid [new-y new-x])
+       (do
+         (ref-set (get-tile alive-grid [y x]) false)
+         (ref-set (get-tile alive-grid [new-y new-x]) true)
+         (ref-set ant (struct ant-struct new-x new-y)))
+       nil))))
 
 (defn loop-ants
   ""
   []
-  (move-ant (first ants) [1 0])
-  ;; (loop [ant (first ants)
-  ;;        left-ants (rest ants)]
-  ;;   (if (nil? ant)
-  ;;     nil
-  ;;     (do
-  ;;       (move-ant ant (random-direction))
-  ;;       (recur (first left-ants) (rest left-ants)))))
+  ;; (move-ant (first ants) [1 0])
+  (loop [ant (first ants)
+         left-ants (rest ants)]
+    (if (nil? ant)
+      nil
+      (do
+        (move-ant ant (random-direction))
+        (recur (first left-ants) (rest left-ants)))))
   )
 
 
