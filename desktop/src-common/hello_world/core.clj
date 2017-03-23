@@ -13,16 +13,14 @@
   [x y]
   (assoc (texture "ck_standing_front.png")
          :x x :y y
-         :width tile-size :height tile-size
-         :alive true))
+         :width tile-size :height tile-size))
 
 (defn create-body-entity
   "Creates a dead body of a brave warrior for play-clj"
   [x y]
   (assoc (texture "ck_dead_back.png")
          :x x :y y
-         :width tile-size :height tile-size
-         :alive false))
+         :width tile-size :height tile-size))
 
 (defn create-chicken-entities
   [ants entities-input]

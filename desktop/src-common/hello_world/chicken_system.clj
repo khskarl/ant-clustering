@@ -92,7 +92,6 @@
 (def bodies (create-bodies num-bodies))
 
 (defn move-ant
-  ""
   [ant [dx dy]]
   (dosync
    (let [x (:x (deref ant))
@@ -107,17 +106,12 @@
        ant))))
 
 (defn loop-ants
-  ""
   []
-  ;; (move-ant (first ants) [1 0])
   (loop [ant (first ants)
          left-ants (rest ants)]
     (if (nil? ant)
       nil
       (do
         (move-ant ant (random-direction))
-        (recur (first left-ants) (rest left-ants)))))
-  )
-
-
+        (recur (first left-ants) (rest left-ants))))))
 
