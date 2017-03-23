@@ -12,31 +12,43 @@
 
 (def dimension 50)
 
+(defn wrap
+  ""
+  [x]
+  (cond
+    (>= x dimension) 0
+    (<  x 0) (dec dimension)
+    :else x))
+
 (defn get-tile
   [grid [i j]]
   (get-in grid [i j]))
 
-(defn is-tile-free
+(defn is-tile-free?
   [grid [i j]]
   (= false (deref (get-tile grid [i j]))))
 
+(defn is-tile-busy?
+  [grid [i j]]
+  (= true (deref (get-tile grid [i j]))))
+
 (defn make-grid
-  [dimension]
+  [dimension f]
   (apply vector 
          (map (fn [_] 
-                (apply vector (map (fn [_] (ref false)) 
+                (apply vector (map (fn [_] (f)) 
                                    (range dimension)))) 
               (range dimension))))
 
-(def dead-grid  (make-grid dimension))
-(def alive-grid (make-grid dimension))
-
-(defstruct ant-struct :x :y)
+(def dead-grid  (make-grid dimension #(ref false)))
+(def alive-grid (make-grid dimension #(ref false)))
+;; Ants
+(defstruct ant-struct :x :y :holding)
 
 (defn create-ant
   [[i j]] 
   (ref-set (get-tile alive-grid [i j]) true)
-  (ref (struct ant-struct j i)))
+  (ref (struct ant-struct j i nil)))
 
 (defn create-ants
   ""
@@ -48,25 +60,36 @@
               (let [i (rand-int dimension)
                     j (rand-int dimension)
                     grid alive-grid
-                    is-tile-busy (deref (get-tile grid [i j]))]
-                (if is-tile-busy
+                    tile-busy (is-tile-busy? grid [i j])]
+                (if tile-busy
                   (recur num-ants-left new-ants)
                   (recur (dec num-ants-left) (conj new-ants (create-ant [i j])))))))))
 
-(def num-ants 30)
+(def num-ants 1)
 (def ants (create-ants num-ants))
+
+;; Bodies
+(defn create-body
+  [[i j]]
+  (ref-set (get-tile dead-grid [i j]) true)
+  (ref (struct ant-struct j i)))
 
 (defn create-bodies
   [num-bodies]
-  "I do nothing :D")
+  (dosync (loop [num-bodies-left num-bodies
+                 new-bodies []]
+            (if (zero? num-bodies-left)
+              new-bodies
+              (let [i (rand-int dimension)
+                    j (rand-int dimension)
+                    grid dead-grid
+                    tile-busy (is-tile-busy? grid [i j])]
+                (if tile-busy
+                  (recur num-bodies-left new-bodies)
+                  (recur (dec num-bodies-left) (conj new-bodies (create-body [i j])))))))))
 
-(defn wrap
-  ""
-  [x]
-  (cond
-    (>= x dimension) 0
-    (<  x 0) (dec dimension)
-    :else x))
+(def num-bodies 30)
+(def bodies (create-bodies num-bodies))
 
 (defn move-ant
   ""
@@ -76,12 +99,12 @@
          y (:y (deref ant))
          new-x (wrap (+ x dx))
          new-y (wrap (+ y dy))]
-     (if (is-tile-free alive-grid [new-y new-x])
+     (if (is-tile-free? alive-grid [new-y new-x])
        (do
          (ref-set (get-tile alive-grid [y x]) false)
          (ref-set (get-tile alive-grid [new-y new-x]) true)
          (ref-set ant (struct ant-struct new-x new-y)))
-       nil))))
+       ant))))
 
 (defn loop-ants
   ""

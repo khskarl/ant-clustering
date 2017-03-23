@@ -16,7 +16,7 @@
          :width tile-size :height tile-size
          :alive true))
 
-(defn create-dead
+(defn create-body-entity
   "Creates a dead body of a brave warrior for play-clj"
   [x y]
   (assoc (texture "ck_dead_back.png")
@@ -42,25 +42,27 @@
   (loop [entity        (first entities)
          left-entities (rest entities)
          ant-ref   (first cs/ants)
-         left-ants (rest cs/ants)
+         left-ants (rest  cs/ants)
          out-entities []]
     (if (nil? ant-ref)
-      out-entities
+      (concat out-entities [entity] left-entities)
       (let [ant (deref ant-ref)]
-        ;; (update entity :x (fn [trash] :x ant))
-        ;; (update entity :y (fn [trash] :y ant))
         (recur (first left-entities) (rest left-entities)
                (first left-ants)     (rest left-ants)
                (conj out-entities (assoc (assoc entity :y (* tile-size (:y ant)))
                                          :x (* tile-size (:x ant)))))))))
 
-
-;; (defn update-alive-chickens 
-;;   [entities]
-;;   (map (fn [entity]
-;;          (->> entity
-;;               (move-chicken (random-direction))))
-;;        entities))
+(defn create-bodies-entities
+  [bodies entities-input]
+  (loop [entities entities-input         
+         body-ref (first bodies)
+         left-bodies (rest bodies)]
+    (if (nil? body-ref)
+      entities
+      (let [body (deref body-ref)]
+        (recur (conj entities (create-body-entity (* tile-size (:x body)) (* tile-size (:y body))))
+               (first left-bodies)
+               (rest left-bodies))))))
 
 (defscreen main-screen
   :on-show
@@ -68,7 +70,8 @@
     (update! screen :renderer (stage))
     (clojure.pprint/pprint cs/ants)
     (->> entities
-         (create-chicken-entities cs/ants)))
+         (create-chicken-entities cs/ants)
+         (create-bodies-entities cs/bodies)))
   
   :on-render
   (fn [screen entities]
