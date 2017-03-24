@@ -40,6 +40,7 @@
                                    (range dimension)))) 
               (range dimension))))
 
+
 (def dead-grid  (make-grid dimension #(ref false)))
 (def alive-grid (make-grid dimension #(ref false)))
 ;; Ants
@@ -105,13 +106,32 @@
          (ref-set ant (struct ant-struct new-x new-y)))
        ant))))
 
+(defn pick-body
+  [ant-ref body-ref]
+  (let [ant (deref ant-ref)
+        body (deref body-ref)]
+    (dosync
+     (ref-set body-ref (assoc body :x dimension :y dimension))
+     (ref-set ant (assoc ant :holding body-ref))))
+  )
+
+(defn drop-body
+  [ant-ref]
+  (let [ant (deref ant-ref)]
+    ""))
+
+
 (defn loop-ants
   []
   (loop [ant (first ants)
          left-ants (rest ants)]
     (if (nil? ant)
       nil
-      (do
+      (let [i (:y (deref ant))
+            j (:x (deref ant))
+            has-body-below (is-tile-busy? dead-grid [i j])]
         (move-ant ant (random-direction))
+        ;; (if (and (> (rand) 0.5) has-body-below)
+        ;;   (get-body ant (get-body-from-tile [i j])))
         (recur (first left-ants) (rest left-ants))))))
 
