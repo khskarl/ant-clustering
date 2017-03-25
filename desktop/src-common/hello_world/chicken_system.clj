@@ -26,11 +26,11 @@
 
 (defn is-tile-free?
   [grid [i j]]
-  (= false (deref (get-tile grid [i j]))))
+  (= false (:is-busy (deref (get-tile grid [i j])))))
 
 (defn is-tile-busy?
   [grid [i j]]
-  (= true (deref (get-tile grid [i j]))))
+  (:is-busy (deref (get-tile grid [i j]))))
 
 (defn make-grid
   [dimension f]
@@ -40,16 +40,22 @@
                                    (range dimension)))) 
               (range dimension))))
 
+(defstruct tile-struct :is-busy :occupied-by)
 
-(def dead-grid  (make-grid dimension #(ref false)))
-(def alive-grid (make-grid dimension #(ref false)))
+(def dead-grid  (make-grid dimension #(ref (struct tile-struct false nil))))
+(def alive-grid (make-grid dimension #(ref (struct tile-struct false nil))))
 ;; Ants
 (defstruct ant-struct :x :y :holding)
 
 (defn create-ant
-  [[i j]] 
-  (ref-set (get-tile alive-grid [i j]) true)
-  (ref (struct ant-struct j i nil)))
+  [[i j]]
+  (let [tile-ref (get-tile alive-grid [i j])
+        tile     (deref tile-ref)
+        ant-ref (ref (struct ant-struct j i nil))] 
+    (ref-set tile-ref (-> tile
+                          (assoc :is-busy true)
+                          (assoc :occupied-by ant-ref)))
+    ant-ref))
 
 (defn create-ants
   ""
@@ -60,13 +66,13 @@
               new-ants
               (let [i (rand-int dimension)
                     j (rand-int dimension)
-                    grid alive-grid
-                    tile-busy (is-tile-busy? grid [i j])]
+                    tile-busy (is-tile-busy? alive-grid [i j])]
                 (if tile-busy
                   (recur num-ants-left new-ants)
-                  (recur (dec num-ants-left) (conj new-ants (create-ant [i j])))))))))
+                  (recur (dec num-ants-left)
+                         (conj new-ants (create-ant [i j])))))))))
 
-(def num-ants 1)
+(def num-ants 100)
 (def ants (create-ants num-ants))
 
 ;; Bodies
@@ -89,10 +95,10 @@
                   (recur num-bodies-left new-bodies)
                   (recur (dec num-bodies-left) (conj new-bodies (create-body [i j])))))))))
 
-(def num-bodies 30)
+(def num-bodies 10)
 (def bodies (create-bodies num-bodies))
 
-(defn move-ant
+(defn move-ant!
   [ant [dx dy]]
   (dosync
    (let [x (:x (deref ant))
@@ -100,9 +106,12 @@
          new-x (wrap (+ x dx))
          new-y (wrap (+ y dy))]
      (if (is-tile-free? alive-grid [new-y new-x])
-       (do
-         (ref-set (get-tile alive-grid [y x]) false)
-         (ref-set (get-tile alive-grid [new-y new-x]) true)
+       (let [tile-ref (get-tile alive-grid [y x])
+             tile     (deref tile-ref)
+             next-tile-ref (get-tile alive-grid [new-y new-x])
+             next-tile     (deref next-tile-ref)]
+         (ref-set tile-ref      (assoc tile      :is-busy false))
+         (ref-set next-tile-ref (assoc next-tile :is-busy true))
          (ref-set ant (struct ant-struct new-x new-y)))
        ant))))
 
@@ -120,18 +129,16 @@
   (let [ant (deref ant-ref)]
     ""))
 
+(defn loop-ant
+  [ant-ref]
+  (move-ant! ant-ref (random-direction)))
 
 (defn loop-ants
   []
-  (loop [ant (first ants)
-         left-ants (rest ants)]
-    (if (nil? ant)
-      nil
-      (let [i (:y (deref ant))
-            j (:x (deref ant))
-            has-body-below (is-tile-busy? dead-grid [i j])]
-        (move-ant ant (random-direction))
-        ;; (if (and (> (rand) 0.5) has-body-below)
-        ;;   (get-body ant (get-body-from-tile [i j])))
-        (recur (first left-ants) (rest left-ants))))))
+  (run! loop-ant ants))
 
+;; (let [i (:y (deref ant-ref))
+;;       j (:x (deref ant-ref))
+;;       has-body-below (is-tile-busy? dead-grid [i j])]
+;;   (if (and (> (rand) 0.5) has-body-below)
+;;     (get-body ant (get-body-from-tile [i j]))))

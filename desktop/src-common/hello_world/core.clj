@@ -78,7 +78,6 @@
   :on-show
   (fn [screen entities]
     (update! screen :renderer (stage))
-    (clojure.pprint/pprint cs/ants)
     (->> entities
          (create-bodies-entities cs/bodies)
          (create-chicken-entities cs/ants)
