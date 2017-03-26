@@ -86,8 +86,8 @@
   :on-render
   (fn [screen entities]
     (clear!)
-    (Thread/sleep 50)
-    (cs/loop-ants)
+    (Thread/sleep 1)
+    (dotimes [n 100] (cs/loop-ants))
     (->> entities
          (update-chicken-entities-positions)
          (render! screen)))

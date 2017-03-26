@@ -11,15 +11,12 @@
 (defn random-direction []
   ((rand-nth [:up :right :down :left]) direction-id-map-delta))
 
-(def dimension 30)
+(def dimension 50)
 
 (defn wrap
   ""
   [x]
-  (cond
-    (>= x dimension) 0
-    (<  x 0) (dec dimension)
-    :else x))
+  (mod x dimension))
 
 (defn get-tile-ref
   [grid [i j]]
@@ -48,7 +45,7 @@
 
 (defn get-body-ref-in-pos
   [[i j]]
-  (println "GETTING BODY :D")
+  ;; (println "GETTING BODY :D")
   (:occupied-by (deref (get-tile-ref dead-grid [i j]))))
 
 
@@ -85,7 +82,9 @@
                   (recur (dec num-ants-left)
                          (conj new-ants (create-ant [i j])))))))))
 
-(def num-ants 1)
+(def radius 1)
+(def max-neighbors (dec (* (inc (* 2 radius)) (inc (* 2 radius)))))
+(def num-ants 30)
 (def ants (create-ants num-ants))
 
 ;; Bodies
@@ -113,7 +112,7 @@
                   (recur num-bodies-left new-bodies)
                   (recur (dec num-bodies-left) (conj new-bodies (create-body [i j])))))))))
 
-(def num-bodies 40)
+(def num-bodies 800)
 (def bodies (create-bodies num-bodies))
 
 (defn has-body-below-ant?
@@ -122,13 +121,34 @@
         j (:x ant)] 
     (is-tile-busy? dead-grid [i j])))
 
+(defn get-neighbors-indices
+  [[i0 j0]]
+  (for [i (range (- i0 radius) (inc (+ i0 radius)))
+        j (range (- j0 radius) (inc (+ j0 radius)))
+        :when (not (and (= i i0) (= j j0)))]
+    [(wrap i)  (wrap j)]))
+
+(get-neighbors-indices [5 5])
+
+(defn count-body-neighbors
+  [[i j]]
+  (count (filter #(:is-busy %)
+                 (map #(deref (get-tile-ref dead-grid %)) (get-neighbors-indices [i j])))))
+
+
 (defn chance-to-pick
-  []
-  0)
+  [ant]
+  (let [i (:y ant)
+        j (:x ant)
+        num-neighbors (count-body-neighbors [i j])]
+    (- 1 (float (/ num-neighbors max-neighbors)))))
 
 (defn chance-to-drop
-  []
-  0)
+  [ant]
+  (let [i (:y ant)
+        j (:x ant)
+        num-neighbors (count-body-neighbors [i j])]
+    (float (/ num-neighbors max-neighbors))))
 
 (defn move-ant!
   [ant [dx dy]]
@@ -144,24 +164,22 @@
              next-tile     (deref next-tile-ref)]
          (ref-set tile-ref      (assoc tile      :is-busy false))
          (ref-set next-tile-ref (assoc next-tile :is-busy true))
-         (ref-set ant (struct ant-struct new-x new-y)))
+         (alter ant assoc :x new-x)
+         (alter ant assoc :y new-y))
        ant))))
 
 (defn pick-body!
   [ant-ref body-ref]
-  (let [ant (deref ant-ref)
-        body (deref body-ref)
-        i (:y body)
-        j (:x body)
-        tile-ref (get-tile-ref dead-grid [i j])
-        tile (deref tile-ref)]
-    (println ant "picking" body-ref)
+  (let [i (:y (deref body-ref))
+        j (:x (deref body-ref))
+        tile-ref (get-tile-ref dead-grid [i j])]
     (dosync
      (alter tile-ref assoc :occupied-by nil)
      (alter tile-ref assoc :is-busy false)
      (alter body-ref assoc :x dimension)
      (alter body-ref assoc :y dimension)
-     (alter ant-ref  assoc :carrying body-ref))))
+     (alter ant-ref  assoc :carrying body-ref)
+     )))
 
 (defn pick-body-below!
   ""
@@ -171,11 +189,19 @@
         body-below (get-body-ref-in-pos [i j])]
     (pick-body! ant-ref body-below)))
 
-
-(defn drop-body!
+(defn drop-body-below!
   [ant-ref]
-  (let [ant (deref ant-ref)]
-    ""))
+  (let [i (:y (deref ant-ref))
+        j (:x (deref ant-ref))
+        tile-ref (get-tile-ref dead-grid [i j])
+        body-ref (:carrying (deref ant-ref))]
+    (dosync
+     (alter tile-ref assoc :occupied-by body-ref)
+     (alter tile-ref assoc :is-busy true)
+     (alter body-ref assoc :x j)
+     (alter body-ref assoc :y i)
+     (alter ant-ref assoc :carrying nil))))
+
 
 (defn loop-ant
   [ant-ref]
@@ -183,17 +209,23 @@
         j (:x (deref ant-ref))
         has-body-below (has-body-below-ant? (deref ant-ref))
         is-carrying (is-ant-carrying? (deref ant-ref))]
-    (if (and (not is-carrying)
-             has-body-below) 
-      (pick-body-below! ant-ref) 
-      ;; (pick-body! ant (get-body-from-tile [i j]))
-      
-      ))
-  ;; (move-ant! ant-ref (random-direction))
-  (move-ant! ant-ref [0 1])
+    ;; (println @ant-ref)
+    ;; (println "drop" (chance-to-drop @ant-ref))
+    ;; (println "pick" (chance-to-pick @ant-ref))
+    (if (and is-carrying
+             (not has-body-below)
+             (> (chance-to-drop @ant-ref) (rand))) 
+      (drop-body-below! ant-ref)
+      (if (and (not is-carrying)
+               has-body-below
+               (> (chance-to-pick @ant-ref) (rand)))
+        (pick-body-below! ant-ref))))
+  (move-ant! ant-ref (random-direction)) 
+  ;; (move-ant! ant-ref [0 1])
   )
 
 (defn loop-ants
   []
-  (run! loop-ant ants))
+  (run! loop-ant ants)
+  )
 
