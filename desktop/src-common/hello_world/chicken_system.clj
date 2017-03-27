@@ -84,7 +84,7 @@
 
 (def radius 1)
 (def max-neighbors (dec (* (inc (* 2 radius)) (inc (* 2 radius)))))
-(def num-ants 30)
+(def num-ants 25)
 (def ants (create-ants num-ants))
 
 ;; Bodies
@@ -112,7 +112,7 @@
                   (recur num-bodies-left new-bodies)
                   (recur (dec num-bodies-left) (conj new-bodies (create-body [i j])))))))))
 
-(def num-bodies 800)
+(def num-bodies 400)
 (def bodies (create-bodies num-bodies))
 
 (defn has-body-below-ant?
@@ -135,6 +135,8 @@
   (count (filter #(:is-busy %)
                  (map #(deref (get-tile-ref dead-grid %)) (get-neighbors-indices [i j])))))
 
+;; TODO: Implement normal distribution
+;; (exp( -(x)^2 / (2 * 0.399^2) ) / sqrt(2*pi* 0.399^2) )
 
 (defn chance-to-pick
   [ant]
@@ -205,20 +207,21 @@
 
 (defn loop-ant
   [ant-ref]
-  (let [i (:y (deref ant-ref))
-        j (:x (deref ant-ref))
+  (let [i (:y @ant-ref)
+        j (:x @ant-ref)
         has-body-below (has-body-below-ant? (deref ant-ref))
-        is-carrying (is-ant-carrying? (deref ant-ref))]
+        is-carrying (is-ant-carrying? (deref ant-ref))
+        chance (rand)]
     ;; (println @ant-ref)
     ;; (println "drop" (chance-to-drop @ant-ref))
     ;; (println "pick" (chance-to-pick @ant-ref))
     (if (and is-carrying
              (not has-body-below)
-             (> (chance-to-drop @ant-ref) (rand))) 
+             (> (chance-to-drop @ant-ref) chance)) 
       (drop-body-below! ant-ref)
       (if (and (not is-carrying)
                has-body-below
-               (> (chance-to-pick @ant-ref) (rand)))
+               (> (chance-to-pick @ant-ref) (* chance chance)))
         (pick-body-below! ant-ref))))
   (move-ant! ant-ref (random-direction)) 
   ;; (move-ant! ant-ref [0 1])

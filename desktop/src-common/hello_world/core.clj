@@ -8,6 +8,10 @@
 (def screen-height 800)
 (def tile-size (/ screen-height cs/dimension))
 
+(def max-iterations 100000)
+(def iterations-per-frame 300)
+(def sleep-time 0)
+
 (def type-to-vector {:ant cs/ants
                      :body cs/bodies})
 
@@ -80,14 +84,13 @@
     (update! screen :renderer (stage))
     (->> entities
          (create-bodies-entities cs/bodies)
-         (create-chicken-entities cs/ants)
-         ))
+         (create-chicken-entities cs/ants)))
   
   :on-render
   (fn [screen entities]
     (clear!)
-    (Thread/sleep 1)
-    (dotimes [n 100] (cs/loop-ants))
+    (Thread/sleep sleep-time)
+    (dotimes [n iterations-per-frame] (cs/loop-ants))
     (->> entities
          (update-chicken-entities-positions)
          (render! screen)))
