@@ -2,6 +2,11 @@
   (:gen-class)
   (:require clojure.pprint))
 
+;; 1) Fazer leitura dos dados pra formiguinhas mortas
+;; 2) Jogar formiguinhas mortas no mapa
+;; 3) Tomada de decisão (problema)
+;; 4) Ajuste de parâmetros
+
 (def direction-id-map-delta
   {:up    [ 0  1]
    :right [ 1  0]
@@ -84,7 +89,8 @@
 
 (def radius 1)
 (def max-neighbors (dec (* (inc (* 2 radius)) (inc (* 2 radius)))))
-(def num-ants 25)
+(println "max-neighbors" max-neighbors)
+(def num-ants 30)
 (def ants (create-ants num-ants))
 
 ;; Bodies
@@ -112,7 +118,7 @@
                   (recur num-bodies-left new-bodies)
                   (recur (dec num-bodies-left) (conj new-bodies (create-body [i j])))))))))
 
-(def num-bodies 400)
+(def num-bodies 450)
 (def bodies (create-bodies num-bodies))
 
 (defn has-body-below-ant?
@@ -205,23 +211,31 @@
      (alter ant-ref assoc :carrying nil))))
 
 
+;;if ((t/=d/2) < 1) return ((c/2)*(t*t)) + b;
+;;return -c/2 * (((t-2)*(--t)) - 1) + b;
+
+(defn ease-in-out
+  [x]
+  (+ 0.5 (* (/ -1 2) (- (* (- x 2) (- x 1)) 1))) 
+  )
+
 (defn loop-ant
   [ant-ref]
   (let [i (:y @ant-ref)
         j (:x @ant-ref)
-        has-body-below (has-body-below-ant? (deref ant-ref))
-        is-carrying (is-ant-carrying? (deref ant-ref))
+        has-body-below (has-body-below-ant? @ant-ref)
+        is-carrying (is-ant-carrying? @ant-ref)
         chance (rand)]
     ;; (println @ant-ref)
     ;; (println "drop" (chance-to-drop @ant-ref))
     ;; (println "pick" (chance-to-pick @ant-ref))
     (if (and is-carrying
              (not has-body-below)
-             (> (chance-to-drop @ant-ref) chance)) 
+             (>= (chance-to-drop @ant-ref) chance)) 
       (drop-body-below! ant-ref)
       (if (and (not is-carrying)
                has-body-below
-               (> (chance-to-pick @ant-ref) (* chance chance)))
+               (>= (chance-to-pick @ant-ref) chance))
         (pick-body-below! ant-ref))))
   (move-ant! ant-ref (random-direction)) 
   ;; (move-ant! ant-ref [0 1])

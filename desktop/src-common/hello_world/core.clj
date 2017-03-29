@@ -8,12 +8,17 @@
 (def screen-height 800)
 (def tile-size (/ screen-height cs/dimension))
 
-(def max-iterations 100000)
-(def iterations-per-frame 300)
+(def current-iteration (ref 0))
+(def total-iterations 400000)
+(def iterations-per-frame 400)
 (def sleep-time 0)
 
 (def type-to-vector {:ant cs/ants
                      :body cs/bodies})
+
+(def is-paused (atom false))
+
+;; (def font (bitmap-font "default.fnt"))
 
 (defn create-chicken-entity
   "Creates a chicken entity for play-clj"
@@ -26,7 +31,7 @@
 (defn create-body-entity
   "Creates a dead body of a brave warrior for play-clj"
   [id x y]
-  (assoc (texture "ck_dead_back.png")
+  (assoc (texture "ck_dead_front.png")
          :id id :type :body
          :x x :y y
          :width tile-size :height tile-size))
@@ -55,7 +60,7 @@
     (if (nil? entity)
       (concat out-entities [entity] left-entities)
       (let [ant-ref   (nth ((:type entity) type-to-vector) (:id entity))
-            ant (deref ant-ref)]
+            ant @ant-ref]
         (concat out-entities [entity] left-entities)
         (recur (first left-entities)
                (rest left-entities)
@@ -78,19 +83,26 @@
                (rest left-bodies)
                (inc id))))))
 
+(declare hello-world title-screen main-screen)
+
 (defscreen main-screen
   :on-show
   (fn [screen entities]
     (update! screen :renderer (stage))
     (->> entities
          (create-bodies-entities cs/bodies)
-         (create-chicken-entities cs/ants)))
+         (create-chicken-entities cs/ants)
+         ))
   
   :on-render
   (fn [screen entities]
     (clear!)
     (Thread/sleep sleep-time)
-    (dotimes [n iterations-per-frame] (cs/loop-ants))
+    (if (and (not @is-paused) (<= @current-iteration total-iterations))
+      (do 
+        (dotimes [n iterations-per-frame]
+          (cs/loop-ants))
+        (dosync (alter current-iteration #(+ iterations-per-frame %)))))
     (->> entities
          (update-chicken-entities-positions)
          (render! screen)))
@@ -99,11 +111,40 @@
   (fn [screen entities]
     (cond
       (= (:key screen) (key-code :q))
-      (app! :exit))))
+      (app! :exit)
+      ;; (= (:key screen) (key-code :p))
+      ;; (swap! is-paused #(not %))
+      )))
 
+(defscreen text-screen
+  :on-show
+  (fn [screen entities]
+    (update! screen :camera (orthographic) :renderer (stage))
+    [(assoc (label "0" (color :white))
+            :id :fps
+            :x 5)
+     (assoc (label "Nananana chickenman!" (color :white))
+            :id :current-iteration
+            :x 5
+            :y 15)]
+    )
+  
+  :on-render
+  (fn [screen entities]
+    (->> (for [entity entities]
+           (case (:id entity)
+             :fps (doto entity (label! :set-text (str (game :fps))))
+             :current-iteration (doto entity (label! :set-text (str @current-iteration)))
+             entity)
+           )
+         (render! screen)))
+  
+  :on-resize
+  (fn [screen entities]
+    (height! screen screen-height)))
 
 (defgame hello-world-game
   :on-create
   (fn [this]
-    (set-screen! this main-screen)))
+    (set-screen! this main-screen text-screen)))
 
